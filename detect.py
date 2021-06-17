@@ -171,12 +171,15 @@ def detect(weights='yolov5s.pt',  # model.pt path(s)
                             save_path += '.mp4'
                         vid_writer = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
                     vid_writer.write(im0)
-
+    
+    df = pd.DataFrame({'FileNames':fname_list, 'Status':status_list})
+    print(df)
+    df.to_csv(os.path.join(save_dir, 'summary.csv'), index=False)
+    
     if save_txt or save_img:
         s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ''
         print(f"Results saved to {save_dir}{s}")
-    df = pd.DataFrame({'FileNames':fname_list, 'Status':status_list})
-    df.to_csv(os.path.join(save_dir, 'summary.csv'), index=False)
+    
 
     if update:
         strip_optimizer(weights)  # update model (to fix SourceChangeWarning)
