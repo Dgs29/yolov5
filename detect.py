@@ -175,7 +175,7 @@ def detect(weights='yolov5s.pt',  # model.pt path(s)
     if save_txt or save_img:
         s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ''
         print(f"Results saved to {save_dir}{s}")
-    df = df = pd.DataFrame({'FileNames':fname_list, 'Status':status_list})
+    df = pd.DataFrame({'FileNames':fname_list, 'Status':status_list})
     df.to_csv(os.path.join(save_dir, 'summary.csv'), index=False)
 
     if update:
