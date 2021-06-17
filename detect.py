@@ -2,9 +2,11 @@ import argparse
 import time
 from pathlib import Path
 
+import pandas as pd
 import cv2
 import torch
 import torch.backends.cudnn as cudnn
+import os
 
 from models.experimental import attempt_load
 from utils.datasets import LoadStreams, LoadImages
@@ -79,7 +81,12 @@ def detect(weights='yolov5s.pt',  # model.pt path(s)
     if device.type != 'cpu':
         model(torch.zeros(1, 3, imgsz, imgsz).to(device).type_as(next(model.parameters())))  # run once
     t0 = time.time()
+    fname_list = []
+    status_list = []
+    
     for path, img, im0s, vid_cap in dataset:
+        fname = os.path.basename(path)
+        fname_list.append(fname)
         img = torch.from_numpy(img).to(device)
         img = img.half() if half else img.float()  # uint8 to fp16/32
         img /= 255.0  # 0 - 255 to 0.0 - 1.0
@@ -97,7 +104,6 @@ def detect(weights='yolov5s.pt',  # model.pt path(s)
         # Apply Classifier
         if classify:
             pred = apply_classifier(pred, modelc, img, im0s)
-
         # Process detections
         for i, det in enumerate(pred):  # detections per image
             if webcam:  # batch_size >= 1
@@ -112,6 +118,7 @@ def detect(weights='yolov5s.pt',  # model.pt path(s)
             gn = torch.tensor(im0.shape)[[1, 0, 1, 0]]  # normalization gain whwh
             imc = im0.copy() if save_crop else im0  # for save_crop
             if len(det):
+                status = "Invalid" 
                 # Rescale boxes from img_size to im0 size
                 det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0.shape).round()
 
@@ -134,7 +141,10 @@ def detect(weights='yolov5s.pt',  # model.pt path(s)
                         plot_one_box(xyxy, im0, label=label, color=colors(c, True), line_thickness=line_thickness)
                         if save_crop:
                             save_one_box(xyxy, imc, file=save_dir / 'crops' / names[c] / f'{p.stem}.jpg', BGR=True)
-
+            else:
+                status = "Valid"
+                
+            status_list.append(status)
             # Print time (inference + NMS)
             print(f'{s}Done. ({t2 - t1:.3f}s)')
 
@@ -165,6 +175,8 @@ def detect(weights='yolov5s.pt',  # model.pt path(s)
     if save_txt or save_img:
         s = f"\n{len(list(save_dir.glob('labels/*.txt')))} labels saved to {save_dir / 'labels'}" if save_txt else ''
         print(f"Results saved to {save_dir}{s}")
+    df = df = pd.DataFrame({'FileNames':fname_list, 'Status':status_list})
+    df.to_csv(os.path.join(save_dir, 'summary.csv'), index=False)
 
     if update:
         strip_optimizer(weights)  # update model (to fix SourceChangeWarning)
@@ -174,7 +186,7 @@ def detect(weights='yolov5s.pt',  # model.pt path(s)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--weights', nargs='+', type=str, default='yolov5s.pt', help='model.pt path(s)')
+    parser.add_argument('--weights', nargs='+', type=str, default='weights/best_v2.pt', help='model.pt path(s)')
     parser.add_argument('--source', type=str, default='data/images', help='file/dir/URL/glob, 0 for webcam')
     parser.add_argument('--imgsz', '--img', '--img-size', type=int, default=640, help='inference size (pixels)')
     parser.add_argument('--conf-thres', type=float, default=0.25, help='confidence threshold')
